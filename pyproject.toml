@@ -1,0 +1,9 @@
+[project]
+name = "cozy-publishing-studio"
+version = "0.1.0"
+description = "Automation-first coloring book publishing studio"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
