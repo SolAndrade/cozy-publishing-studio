@@ -1,15 +1,6 @@
 from dataclasses import dataclass
 
-
-@dataclass(frozen=True,slots=True)
-class InteriorSpec:
-    trim_width_in: float=8.5
-    trim_height_in: float=8.5
-    art_width_in: float=7.5
-    art_height_in: float=7.5
-    scene_count: int=40
-    blank_reverse: bool=True
-    bleed: bool=False
+from .profiles import BookProfile,COZY_SQUARE
 
 
 @dataclass(frozen=True,slots=True)
@@ -21,19 +12,18 @@ class InteriorPage:
 
 @dataclass(frozen=True,slots=True)
 class InteriorPlan:
-    spec: InteriorSpec
+    profile: BookProfile
     pages: tuple[InteriorPage,...]
 
     @property
     def page_count(self): return len(self.pages)
 
 
-def build_interior_plan(spec: InteriorSpec=InteriorSpec()) -> InteriorPlan:
-    if spec.scene_count!=40:
-        raise ValueError("Current coloring-book template requires exactly 40 scenes")
+def build_interior_plan(profile: BookProfile=COZY_SQUARE) -> InteriorPlan:
+    profile.validate()
     pages=[]
-    for scene in range(1,spec.scene_count+1):
+    for scene in range(1,profile.scene_count+1):
         pages.append(InteriorPage(len(pages)+1,scene,False))
-        if spec.blank_reverse:
+        if profile.blank_reverse:
             pages.append(InteriorPage(len(pages)+1,None,True))
-    return InteriorPlan(spec,tuple(pages))
+    return InteriorPlan(profile,tuple(pages))
