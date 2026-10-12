@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from backend.orchestrator.engine import ProductionEngine
 from backend.runtime import Runtime
+from backend.api.status import system_status
 
 engine = ProductionEngine()
 runtime = Runtime()
@@ -36,6 +37,8 @@ class Handler(BaseHTTPRequestHandler):
         path=urlparse(self.path).path
         if path=="/health":
             return response(self,200,{"status":"ok","service":"cozy-publishing-studio"})
+        if path=="/api/status":
+            return response(self,200,system_status())
         parts=path.strip("/").split("/")
         if len(parts)==3 and parts[:2]==["api","projects"]:
             try:
