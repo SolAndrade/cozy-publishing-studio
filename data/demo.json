@@ -1,0 +1,13 @@
+{
+  "series": {
+    "name": "Cozy Little Worlds",
+    "targetBooks": 5,
+    "books": [
+      {"position":1,"title":"Cozy Little Rooms","status":"PUBLISHED","progress":100},
+      {"position":2,"title":"Cozy Little Shops","status":"PUBLISHED","progress":100},
+      {"position":3,"title":"Cozy Little Cafés","status":"GENERATING","progress":7.5,"lockedScenes":3,"totalScenes":40},
+      {"position":4,"title":"Cozy Little Kitchens","status":"PLANNED","progress":0},
+      {"position":5,"title":"Por decidir","status":"IDEA","progress":0}
+    ]
+  }
+}
