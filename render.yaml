@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: cozy-publishing-studio-api
+    runtime: python
+    plan: free
+    buildCommand: "pip install -e ."
+    startCommand: "python -m backend.api.app"
+    healthCheckPath: /health
+    envVars:
+      - key: COZY_ENV
+        value: production
+      - key: COZY_PUBLIC_APP_ORIGIN
+        value: https://solandrade.github.io
