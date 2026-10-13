@@ -22,6 +22,7 @@ class ProductionController:
             "book_position": book.position,
             "scene_number": scene.number,
             "title": scene.title,
+            "locked_brief": book.locked_brief,
         })
         return self.queue.enqueue(job)
 
