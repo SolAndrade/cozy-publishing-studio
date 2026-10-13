@@ -13,7 +13,7 @@ class ProductionEngine:
         if len(concepts) != 5:
             raise ValueError("Production requires exactly five approved book concepts")
         books = [
-            Book(title=title.strip(), subtitle=subtitle.strip(), position=index)
+            Book(title=title.strip(), subtitle=subtitle.strip(), position=index, locked_brief=subtitle.strip())
             for index, (title, subtitle) in enumerate(concepts, start=1)
         ]
         return PublishingProject(Series(name=name.strip(), books=books))
