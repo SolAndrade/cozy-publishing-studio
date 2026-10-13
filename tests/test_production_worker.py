@@ -5,6 +5,7 @@ from backend.domain.states import BookState
 from backend.orchestrator.engine import ProductionEngine
 from backend.providers.mock import MockImageGenerator, MockVisualReviewer
 from backend.runtime import Runtime
+from backend.storage.artifact_store import LocalArtifactStore
 from backend.workers.production_worker import ProductionWorker
 from backend.workers.runner import Worker
 
@@ -19,7 +20,12 @@ class ProductionWorkerTests(unittest.TestCase):
         engine.start_generation(book)
         runtime.production.enqueue_next_scene(project.id,book)
         with tempfile.TemporaryDirectory() as d:
-            production=ProductionWorker(runtime,MockImageGenerator(d),MockVisualReviewer())
+            production=ProductionWorker(
+                runtime,
+                MockImageGenerator(f"{d}/generated"),
+                MockVisualReviewer(),
+                LocalArtifactStore(f"{d}/artifacts"),
+            )
             worker=Worker(runtime.queue,production.handlers())
             for _ in range(100):
                 if worker.run_one() is None:
