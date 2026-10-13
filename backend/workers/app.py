@@ -1,17 +1,8 @@
 import os
 import time
 
-from backend.jobs.queue import FileJobQueue
-from backend.runtime import Runtime
-from backend.storage.file_store import FileProjectStore
+from backend.runtime_factory import runtime_from_env
 from backend.workers.service import build_worker
-
-
-def runtime_from_env() -> Runtime:
-    return Runtime(
-        store=FileProjectStore(os.getenv("COZY_PROJECTS_DIR",".cozy-data/projects")),
-        queue=FileJobQueue(os.getenv("COZY_JOBS_DIR",".cozy-data/jobs")),
-    )
 
 
 def run() -> None:
