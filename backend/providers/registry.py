@@ -17,27 +17,46 @@ class ProviderStatus:
     detail: str
 
 
-PROVIDER_SECRETS = {
-    "image": "COZY_IMAGE_API_KEY",
-    "vision": "COZY_VISION_API_KEY",
-    "storage": "COZY_STORAGE_API_KEY",
-}
+def _generic_provider(role: str, name: str, secret: str) -> ProviderStatus:
+    if name == "mock":
+        return ProviderStatus(role,name,ProviderState.MOCK,"Development adapter; not production cloud")
+    configured=bool(os.getenv(secret,"").strip())
+    return ProviderStatus(
+        role,name,
+        ProviderState.CONFIGURED if configured else ProviderState.BLOCKED,
+        "Server-side secret configured" if configured else f"Missing {secret}",
+    )
+
+
+def _storage_status(name: str) -> ProviderStatus:
+    if name == "local":
+        return ProviderStatus(
+            "storage",name,ProviderState.MOCK,
+            "Development adapter; not durable shared production storage",
+        )
+    if name == "s3":
+        bucket=bool(os.getenv("COZY_S3_BUCKET","").strip())
+        access=bool(os.getenv("AWS_ACCESS_KEY_ID","").strip())
+        secret=bool(os.getenv("AWS_SECRET_ACCESS_KEY","").strip())
+        configured=bucket and access and secret
+        return ProviderStatus(
+            "storage",name,
+            ProviderState.CONFIGURED if configured else ProviderState.BLOCKED,
+            "Private S3-compatible storage configured"
+            if configured else "Missing COZY_S3_BUCKET or AWS S3 credentials",
+        )
+    return ProviderStatus(
+        "storage",name,ProviderState.BLOCKED,
+        "Storage adapter is not implemented",
+    )
 
 
 def provider_status() -> tuple[ProviderStatus,...]:
     image=os.getenv("COZY_IMAGE_PROVIDER","mock").strip() or "mock"
     vision=os.getenv("COZY_VISION_PROVIDER","mock").strip() or "mock"
     storage=os.getenv("COZY_ARTIFACT_STORE","local").strip() or "local"
-
-    def state(role,name):
-        if name in ("mock","local"):
-            return ProviderStatus(role,name,ProviderState.MOCK,"Development adapter; not production cloud")
-        key=PROVIDER_SECRETS[role]
-        configured=bool(os.getenv(key,"").strip())
-        return ProviderStatus(
-            role,name,
-            ProviderState.CONFIGURED if configured else ProviderState.BLOCKED,
-            "Server-side secret configured" if configured else f"Missing {key}",
-        )
-
-    return (state("image",image),state("vision",vision),state("storage",storage))
+    return (
+        _generic_provider("image",image,"COZY_IMAGE_API_KEY"),
+        _generic_provider("vision",vision,"COZY_VISION_API_KEY"),
+        _storage_status(storage),
+    )
