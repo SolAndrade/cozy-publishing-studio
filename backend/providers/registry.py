@@ -20,11 +20,11 @@ class ProviderStatus:
 def _generic_provider(role: str, name: str, secret: str) -> ProviderStatus:
     if name == "mock":
         return ProviderStatus(role,name,ProviderState.MOCK,"Development adapter; not production cloud")
-    configured=bool(os.getenv(secret,"").strip())
+    configured=name=="openai" and bool(os.getenv("OPENAI_API_KEY","").strip())
     return ProviderStatus(
         role,name,
         ProviderState.CONFIGURED if configured else ProviderState.BLOCKED,
-        "Server-side secret configured" if configured else f"Missing {secret}",
+        "Server-side secret configured" if configured else "Adapter unavailable or OPENAI_API_KEY missing",
     )
 
 
