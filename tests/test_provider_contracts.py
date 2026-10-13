@@ -20,11 +20,21 @@ class ContractTests(unittest.TestCase):
     def test_review_accepts_pass(self):
         self.assertEqual(normalize_review({"result":"PASS"})["result"],"PASS")
 
-    def test_storage_provider_uses_storage_secret(self):
-        env={"COZY_ARTIFACT_STORE":"cloud","COZY_STORAGE_API_KEY":"configured"}
+    def test_s3_storage_requires_bucket_and_credentials(self):
+        env={
+            "COZY_ARTIFACT_STORE":"s3",
+            "COZY_S3_BUCKET":"private-books",
+            "AWS_ACCESS_KEY_ID":"configured",
+            "AWS_SECRET_ACCESS_KEY":"configured",
+        }
         with patch.dict(os.environ,env,clear=True):
             storage=next(p for p in provider_status() if p.role=="storage")
         self.assertEqual(storage.state,ProviderState.CONFIGURED)
+
+    def test_unknown_storage_adapter_is_blocked(self):
+        with patch.dict(os.environ,{"COZY_ARTIFACT_STORE":"cloud"},clear=True):
+            storage=next(p for p in provider_status() if p.role=="storage")
+        self.assertEqual(storage.state,ProviderState.BLOCKED)
 
 
 if __name__=="__main__": unittest.main()
