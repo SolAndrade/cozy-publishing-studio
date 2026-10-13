@@ -50,3 +50,14 @@ class S3ArtifactStore:
         response = self.client.head_object(Bucket=self.bucket, Key=record["key"])
         metadata = response.get("Metadata", {})
         return metadata.get("sha256") == record.get("sha256")
+
+    def materialize(self, record: dict, destination: str) -> str:
+        if record.get("bucket") != self.bucket:
+            raise RuntimeError("artifact_bucket_mismatch")
+        target=Path(destination)
+        target.parent.mkdir(parents=True,exist_ok=True)
+        self.client.download_file(self.bucket, record["key"], str(target))
+        if sha256(target.read_bytes()).hexdigest() != record.get("sha256"):
+            target.unlink(missing_ok=True)
+            raise RuntimeError("artifact_integrity_check_failed")
+        return str(target)
