@@ -1,7 +1,9 @@
 import unittest
+from dataclasses import replace
 
 from backend.book_design.cover import CoverSpec,build_cover_plan
-from backend.book_design.interior import InteriorSpec,build_interior_plan
+from backend.book_design.interior import build_interior_plan
+from backend.book_design.profiles import COZY_SQUARE
 
 
 class BookDesignTests(unittest.TestCase):
@@ -17,9 +19,11 @@ class BookDesignTests(unittest.TestCase):
         self.assertAlmostEqual(plan.full_height_in,8.75,places=2)
         self.assertTrue(plan.barcode_reserved)
 
-    def test_non_40_scene_template_rejected(self):
-        with self.assertRaises(ValueError):
-            build_interior_plan(InteriorSpec(scene_count=39))
+    def test_non_40_scene_profile_is_supported(self):
+        profile=replace(COZY_SQUARE,id="cozy-square-39",scene_count=39)
+        plan=build_interior_plan(profile)
+        self.assertEqual(plan.page_count,78)
+        self.assertEqual(sum(p.scene_number is not None for p in plan.pages),39)
 
 
 if __name__=="__main__": unittest.main()
