@@ -34,6 +34,29 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertEqual(loaded.series.name, "Integration Series")
         self.assertEqual(loaded.series.books[0].title, "Book One")
 
+    def test_stale_running_job_is_blocked_without_requeue(self):
+        import psycopg
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(JobType.PLAN_BOOK, {"project_id": str(uuid4())})
+        queue.enqueue(job)
+        claimed = queue.next()
+        self.assertEqual(claimed.status, JobStatus.RUNNING)
+
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (job.id,),
+            )
+
+        self.assertEqual(queue.block_stale_running(60), 1)
+        self.assertIsNone(queue.next())
+        with psycopg.connect(self.database_url) as conn:
+            row = conn.execute(
+                "SELECT status,error FROM cozy_jobs WHERE id=%s", (job.id,)
+            ).fetchone()
+        self.assertEqual(row[0], JobStatus.BLOCKED.value)
+        self.assertEqual(row[1], "stale_running_job_requires_review")
+
     def test_job_claim_is_atomic(self):
         queue_a = PostgresJobQueue(self.database_url)
         queue_b = PostgresJobQueue(self.database_url)
