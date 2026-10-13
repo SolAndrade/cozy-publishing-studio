@@ -6,15 +6,11 @@ from urllib.parse import urlparse
 from backend.orchestrator.engine import ProductionEngine
 from backend.runtime import Runtime
 from backend.api.status import system_status
-from backend.storage.file_store import FileProjectStore
-from backend.jobs.queue import FileJobQueue
+from backend.runtime_factory import runtime_from_env
 from backend.security.api_auth import authorize_header
 
 engine = ProductionEngine()
-runtime = Runtime(
-    store=FileProjectStore(os.getenv("COZY_PROJECTS_DIR",".cozy-data/projects")),
-    queue=FileJobQueue(os.getenv("COZY_JOBS_DIR",".cozy-data/jobs")),
-)
+runtime = runtime_from_env()
 
 
 def response(handler, status, payload):
