@@ -36,7 +36,10 @@ class ProductionWorker:
         else:
             suffix=Path(path).suffix or ".png"
             key=f"projects/{project.id}/books/{book.position}/scenes/{scene.number}{suffix}"
-            review_payload["image_artifact"]=self.artifact_store.put(path,key)
+            try:
+                review_payload["image_artifact"]=self.artifact_store.put(path,key)
+            finally:
+                Path(path).unlink(missing_ok=True)
         self.runtime.queue.enqueue(Job(JobType.REVIEW_SCENE,review_payload))
 
     def review(self, payload):
@@ -65,6 +68,7 @@ class ProductionWorker:
         self.runtime.queue.enqueue(Job(JobType.GENERATE_SCENE,{
             "project_id":project.id,"book_position":book.position,
             "scene_number":scene.number,"title":scene.title,
+            "locked_brief":book.locked_brief,
             "mode":result.value,"reason":reason,
         }))
 
