@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from backend.domain.project import PublishingProject
-from backend.jobs.queue import InMemoryJobQueue
+from backend.jobs.queue import FileJobQueue, InMemoryJobQueue
 from backend.production.controller import ProductionController
 from backend.storage.file_store import FileProjectStore
 
@@ -9,7 +9,7 @@ from backend.storage.file_store import FileProjectStore
 @dataclass(slots=True)
 class Runtime:
     projects: dict[str, PublishingProject] = field(default_factory=dict)
-    queue: InMemoryJobQueue = field(default_factory=InMemoryJobQueue)
+    queue: object = field(default_factory=InMemoryJobQueue)
     store: FileProjectStore | None = None
 
     @property
