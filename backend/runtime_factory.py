@@ -14,6 +14,7 @@ def runtime_from_env() -> Runtime:
         return Runtime(
             store=PostgresProjectStore(database_url),
             queue=PostgresJobQueue(database_url),
+            cache_projects=False,
         )
     if env=="production":
         raise RuntimeError("Production requires DATABASE_URL for shared project and job persistence")
