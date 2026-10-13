@@ -80,6 +80,35 @@ class PostgresJobQueue:
             ).fetchone()
         return self._job(row) if row else None
 
+    def recover_stale_running(self, stale_after_seconds: int = 900) -> tuple[int, int]:
+        """Fence abandoned claims, requeue retryable jobs, and block exhausted jobs."""
+        if stale_after_seconds < 1:
+            raise ValueError("stale_after_seconds must be positive")
+        with self._connect() as conn:
+            retryable=conn.execute(
+                """UPDATE cozy_jobs
+                   SET status=%s,
+                       error='recovered_after_stale_claim',
+                       claim_token=NULL,
+                       updated_at=NOW()
+                   WHERE status=%s
+                     AND attempts < max_attempts
+                     AND updated_at < NOW() - (%s * INTERVAL '1 second')""",
+                (JobStatus.QUEUED.value,JobStatus.RUNNING.value,stale_after_seconds),
+            ).rowcount
+            exhausted=conn.execute(
+                """UPDATE cozy_jobs
+                   SET status=%s,
+                       error='stale_running_job_retry_limit_reached',
+                       claim_token=NULL,
+                       updated_at=NOW()
+                   WHERE status=%s
+                     AND attempts >= max_attempts
+                     AND updated_at < NOW() - (%s * INTERVAL '1 second')""",
+                (JobStatus.BLOCKED.value,JobStatus.RUNNING.value,stale_after_seconds),
+            ).rowcount
+        return retryable, exhausted
+
     def block_stale_running(self, stale_after_seconds: int = 900) -> int:
         """Fail closed on abandoned RUNNING jobs instead of risking duplicate work."""
         if stale_after_seconds < 1:
