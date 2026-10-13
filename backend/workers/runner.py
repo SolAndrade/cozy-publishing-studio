@@ -16,8 +16,9 @@ class Worker:
         if job is None:
             return None
         try:
-            job.start()
-            self.queue.save(job)
+            if job.status != JobStatus.RUNNING:
+                job.start()
+                self.queue.save(job)
             handler = self.handlers.get(job.type)
             if handler is None:
                 raise RuntimeError(f"No handler registered for {job.type}")
