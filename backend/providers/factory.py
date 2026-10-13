@@ -27,6 +27,11 @@ class ProviderFactory:
         name=cls.image_provider_name()
         if name=="mock":
             return MockImageGenerator(os.getenv("COZY_MOCK_IMAGES_DIR",".cozy-data/mock-images"))
+        if name=="openai":
+            if not os.getenv("OPENAI_API_KEY","").strip():
+                raise ProviderNotConfigured("Missing OPENAI_API_KEY for image generation")
+            from backend.providers.openai_image import OpenAIImageGenerator
+            return OpenAIImageGenerator()
         raise ProviderNotConfigured(f"Image provider {name!r} is not implemented")
 
     @classmethod
