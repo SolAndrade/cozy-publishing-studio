@@ -63,6 +63,7 @@ class Book:
     title: str
     subtitle: str
     position: int
+    locked_brief: str = ""
     scenes: list[Scene] = field(default_factory=list)
     state: BookState = BookState.SERIES_PLANNED
 
