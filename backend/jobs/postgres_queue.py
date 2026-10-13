@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict
+from uuid import uuid4
 
 from backend.jobs.models import Job, JobStatus, JobType
 
@@ -35,6 +36,7 @@ class PostgresJobQueue:
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                 )
             """)
+            conn.execute("ALTER TABLE cozy_jobs ADD COLUMN IF NOT EXISTS claim_token TEXT")
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS cozy_jobs_status_created_idx ON cozy_jobs(status,created_at)"
             )
@@ -46,6 +48,7 @@ class PostgresJobQueue:
             type=JobType(row[1]),payload=payload,id=row[0],
             status=JobStatus(row[3]),attempts=row[4],
             max_attempts=row[5],error=row[6],
+            claim_token=row[7] if len(row) > 7 else None,
         )
 
     def enqueue(self, job: Job) -> Job:
@@ -61,18 +64,19 @@ class PostgresJobQueue:
         return job
 
     def next(self) -> Job | None:
+        claim_token=str(uuid4())
         with self._connect() as conn:
             row=conn.execute(
                 """UPDATE cozy_jobs SET status=%s, attempts=attempts+1,
-                          error=NULL, updated_at=NOW()
+                          error=NULL, claim_token=%s, updated_at=NOW()
                    WHERE id=(
                        SELECT id FROM cozy_jobs
                        WHERE status=%s AND attempts < max_attempts
                        ORDER BY created_at
                        FOR UPDATE SKIP LOCKED LIMIT 1
                    )
-                   RETURNING id,type,payload,status,attempts,max_attempts,error""",
-                (JobStatus.RUNNING.value,JobStatus.QUEUED.value),
+                   RETURNING id,type,payload,status,attempts,max_attempts,error,claim_token""",
+                (JobStatus.RUNNING.value,claim_token,JobStatus.QUEUED.value),
             ).fetchone()
         return self._job(row) if row else None
 
@@ -85,6 +89,7 @@ class PostgresJobQueue:
                 """UPDATE cozy_jobs
                    SET status=%s,
                        error='stale_running_job_requires_review',
+                       claim_token=NULL,
                        updated_at=NOW()
                    WHERE status=%s
                      AND updated_at < NOW() - (%s * INTERVAL '1 second')""",
@@ -94,11 +99,23 @@ class PostgresJobQueue:
 
     def save(self, job: Job) -> None:
         with self._connect() as conn:
-            conn.execute(
-                """UPDATE cozy_jobs SET status=%s, attempts=%s, error=%s,
-                          payload=%s::jsonb, updated_at=NOW() WHERE id=%s""",
-                (job.status.value,job.attempts,job.error,json.dumps(job.payload),job.id),
-            )
+            if job.claim_token:
+                result=conn.execute(
+                    """UPDATE cozy_jobs SET status=%s, attempts=%s, error=%s,
+                              payload=%s::jsonb, updated_at=NOW()
+                       WHERE id=%s AND claim_token=%s""",
+                    (job.status.value,job.attempts,job.error,json.dumps(job.payload),
+                     job.id,job.claim_token),
+                )
+                if result.rowcount != 1:
+                    raise RuntimeError("job_claim_lost")
+            else:
+                conn.execute(
+                    """UPDATE cozy_jobs SET status=%s, attempts=%s, error=%s,
+                              payload=%s::jsonb, updated_at=NOW()
+                       WHERE id=%s AND claim_token IS NULL""",
+                    (job.status.value,job.attempts,job.error,json.dumps(job.payload),job.id),
+                )
 
     def __len__(self) -> int:
         with self._connect() as conn:
