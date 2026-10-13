@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from backend.domain.states import QAResult
 from backend.jobs.models import Job, JobType
@@ -10,6 +12,7 @@ class ProductionWorker:
     runtime: Runtime
     image_generator: object
     visual_reviewer: object
+    artifact_store: object | None = None
 
     def _scene(self, payload):
         project=self.runtime.get(payload["project_id"])
@@ -24,16 +27,31 @@ class ProductionWorker:
         path=self.image_generator.generate(payload)
         scene.record_generation()
         self.runtime.persist(project)
-        self.runtime.queue.enqueue(Job(JobType.REVIEW_SCENE,{
+        review_payload={
             "project_id":project.id,"book_position":book.position,
-            "scene_number":scene.number,"image_path":path,
-        }))
+            "scene_number":scene.number,
+        }
+        if self.artifact_store is None:
+            review_payload["image_path"]=path
+        else:
+            suffix=Path(path).suffix or ".png"
+            key=f"projects/{project.id}/books/{book.position}/scenes/{scene.number}{suffix}"
+            review_payload["image_artifact"]=self.artifact_store.put(path,key)
+        self.runtime.queue.enqueue(Job(JobType.REVIEW_SCENE,review_payload))
 
     def review(self, payload):
         project,book,scene=self._scene(payload)
         if scene.locked:
             return
-        verdict=self.visual_reviewer.review(payload["image_path"], scene.title)
+        if "image_artifact" in payload:
+            if self.artifact_store is None:
+                raise RuntimeError("artifact_store_required_for_review")
+            with TemporaryDirectory() as temp_dir:
+                destination=str(Path(temp_dir)/"scene-image")
+                image_path=self.artifact_store.materialize(payload["image_artifact"],destination)
+                verdict=self.visual_reviewer.review(image_path, scene.title)
+        else:
+            verdict=self.visual_reviewer.review(payload["image_path"], scene.title)
         result=QAResult(verdict["result"])
         reason=verdict.get("reason","")
         scene.qa(result)
