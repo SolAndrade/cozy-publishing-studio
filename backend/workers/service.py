@@ -1,25 +1,35 @@
 import os
 
-from backend.providers.factory import ProviderNotConfigured
-from backend.providers.mock import MockImageGenerator, MockVisualReviewer
+from backend.providers.factory import ProviderFactory, ProviderNotConfigured
 from backend.runtime import Runtime
 from backend.storage.artifact_factory import artifact_store_from_env
 from backend.workers.production_worker import ProductionWorker
 from backend.workers.runner import Worker
 
 
-def build_development_worker(runtime: Runtime) -> Worker:
-    production=ProductionWorker(runtime,MockImageGenerator(),MockVisualReviewer(),artifact_store_from_env())
+def _build_configured_worker(runtime: Runtime) -> Worker:
+    production=ProductionWorker(
+        runtime,
+        ProviderFactory.image_generator(),
+        ProviderFactory.visual_reviewer(),
+        artifact_store_from_env(),
+    )
     return Worker(runtime.queue,production.handlers())
+
+
+def build_development_worker(runtime: Runtime) -> Worker:
+    return _build_configured_worker(runtime)
 
 
 def build_worker(runtime: Runtime) -> Worker:
     env=os.getenv("COZY_ENV","development").strip().lower()
     if env!="production":
         return build_development_worker(runtime)
-    raise ProviderNotConfigured(
-        "Production worker blocked: configure real image and vision provider adapters before processing jobs"
-    )
+    if ProviderFactory.image_provider_name()=="mock" or ProviderFactory.vision_provider_name()=="mock":
+        raise ProviderNotConfigured(
+            "Production worker blocked: mock image/vision providers are not allowed"
+        )
+    return _build_configured_worker(runtime)
 
 
 def drain(worker: Worker, limit: int=200):
