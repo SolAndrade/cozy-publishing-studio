@@ -23,6 +23,7 @@ class ProductionWorker:
             return
         path=self.image_generator.generate(payload)
         scene.record_generation()
+        self.runtime.persist(project)
         self.runtime.queue.enqueue(Job(JobType.REVIEW_SCENE,{
             "project_id":project.id,"book_position":book.position,
             "scene_number":scene.number,"image_path":path,
@@ -36,11 +37,13 @@ class ProductionWorker:
         result=QAResult(verdict["result"])
         reason=verdict.get("reason","")
         scene.qa(result)
+        self.runtime.persist(project)
         if result==QAResult.PASS:
             self.runtime.production.enqueue_next_scene(project.id,book)
             return
         if result==QAResult.REGENERATE:
             scene.record_material_defect(reason or "material visual defect")
+            self.runtime.persist(project)
         self.runtime.queue.enqueue(Job(JobType.GENERATE_SCENE,{
             "project_id":project.id,"book_position":book.position,
             "scene_number":scene.number,"title":scene.title,
