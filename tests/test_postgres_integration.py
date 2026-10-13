@@ -76,7 +76,28 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertEqual(claimed.id, job.id)
         self.assertEqual(claimed.status, JobStatus.RUNNING)
         self.assertEqual(claimed.attempts, 1)
+        self.assertIsNotNone(claimed.claim_token)
         self.assertIsNone(second_claim)
+
+    def test_stale_worker_cannot_save_after_claim_is_invalidated(self):
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(JobType.PLAN_BOOK, {"project_id": str(uuid4())})
+        queue.enqueue(job)
+        claimed = queue.next()
+        self.assertIsNotNone(claimed.claim_token)
+
+        self.assertEqual(queue.block_stale_running(1), 0)
+        import psycopg
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (job.id,),
+            )
+        self.assertEqual(queue.block_stale_running(60), 1)
+
+        claimed.succeed()
+        with self.assertRaisesRegex(RuntimeError, "job_claim_lost"):
+            queue.save(claimed)
 
 
 if __name__ == "__main__":
