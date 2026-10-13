@@ -76,6 +76,22 @@ class PostgresJobQueue:
             ).fetchone()
         return self._job(row) if row else None
 
+    def block_stale_running(self, stale_after_seconds: int = 900) -> int:
+        """Fail closed on abandoned RUNNING jobs instead of risking duplicate work."""
+        if stale_after_seconds < 1:
+            raise ValueError("stale_after_seconds must be positive")
+        with self._connect() as conn:
+            result=conn.execute(
+                """UPDATE cozy_jobs
+                   SET status=%s,
+                       error='stale_running_job_requires_review',
+                       updated_at=NOW()
+                   WHERE status=%s
+                     AND updated_at < NOW() - (%s * INTERVAL '1 second')""",
+                (JobStatus.BLOCKED.value,JobStatus.RUNNING.value,stale_after_seconds),
+            )
+            return result.rowcount
+
     def save(self, job: Job) -> None:
         with self._connect() as conn:
             conn.execute(
