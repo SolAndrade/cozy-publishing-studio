@@ -3,12 +3,13 @@ import os
 from backend.providers.factory import ProviderNotConfigured
 from backend.providers.mock import MockImageGenerator, MockVisualReviewer
 from backend.runtime import Runtime
+from backend.storage.artifact_factory import artifact_store_from_env
 from backend.workers.production_worker import ProductionWorker
 from backend.workers.runner import Worker
 
 
 def build_development_worker(runtime: Runtime) -> Worker:
-    production=ProductionWorker(runtime,MockImageGenerator(),MockVisualReviewer())
+    production=ProductionWorker(runtime,MockImageGenerator(),MockVisualReviewer(),artifact_store_from_env())
     return Worker(runtime.queue,production.handlers())
 
 
