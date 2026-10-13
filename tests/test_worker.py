@@ -33,6 +33,30 @@ class WorkerTests(unittest.TestCase):
             with self.assertRaises(ProviderNotConfigured):
                 build_worker(Runtime())
 
+    def test_production_rejects_mock_providers_explicitly(self):
+        env={
+            "COZY_ENV":"production",
+            "COZY_IMAGE_PROVIDER":"mock",
+            "COZY_VISION_PROVIDER":"mock",
+        }
+        with patch.dict(os.environ,env,clear=True):
+            with self.assertRaisesRegex(ProviderNotConfigured,"mock"):
+                build_worker(Runtime())
+
+    def test_named_but_unimplemented_provider_does_not_fake_readiness(self):
+        env={
+            "COZY_ENV":"production",
+            "COZY_IMAGE_PROVIDER":"real-image",
+            "COZY_VISION_PROVIDER":"real-vision",
+            "COZY_ARTIFACT_STORE":"s3",
+            "COZY_S3_BUCKET":"private",
+            "AWS_ACCESS_KEY_ID":"x",
+            "AWS_SECRET_ACCESS_KEY":"y",
+        }
+        with patch.dict(os.environ,env,clear=True):
+            with self.assertRaisesRegex(ProviderNotConfigured,"not implemented"):
+                build_worker(Runtime())
+
 
 if __name__ == "__main__":
     unittest.main()
