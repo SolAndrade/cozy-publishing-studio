@@ -19,3 +19,12 @@ class LocalArtifactStore:
     def verify(self, record: dict):
         path=Path(record["path"])
         return path.exists() and sha256(path.read_bytes()).hexdigest()==record["sha256"]
+
+    def materialize(self, record: dict, destination: str) -> str:
+        source=Path(record["path"])
+        if not self.verify(record):
+            raise RuntimeError("artifact_integrity_check_failed")
+        target=Path(destination)
+        target.parent.mkdir(parents=True,exist_ok=True)
+        copy2(source,target)
+        return str(target)
