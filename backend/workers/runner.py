@@ -1,14 +1,13 @@
 from collections.abc import Callable
 
 from backend.jobs.models import Job, JobStatus, JobType
-from backend.jobs.queue import InMemoryJobQueue
 
 
 Handler = Callable[[dict], None]
 
 
 class Worker:
-    def __init__(self, queue: InMemoryJobQueue, handlers: dict[JobType, Handler]) -> None:
+    def __init__(self, queue, handlers: dict[JobType, Handler]) -> None:
         self.queue = queue
         self.handlers = handlers
 
@@ -18,6 +17,7 @@ class Worker:
             return None
         try:
             job.start()
+            self.queue.save(job)
             handler = self.handlers.get(job.type)
             if handler is None:
                 raise RuntimeError(f"No handler registered for {job.type}")
@@ -26,4 +26,5 @@ class Worker:
         except Exception as exc:
             if job.status == JobStatus.RUNNING:
                 job.fail(str(exc))
+        self.queue.save(job)
         return job
