@@ -1,3 +1,5 @@
+# Deploy the API and shared PostgreSQL first. Production workers remain gated
+# until real image/vision adapters and durable artifact storage are configured.
 services:
   - type: web
     name: cozy-publishing-studio-api
@@ -11,3 +13,14 @@ services:
         value: production
       - key: COZY_PUBLIC_APP_ORIGIN
         value: https://solandrade.github.io
+      - key: COZY_API_TOKEN
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cozy-publishing-studio-db
+          property: connectionString
+
+databases:
+  - name: cozy-publishing-studio-db
+    plan: free
+    ipAllowList: []
