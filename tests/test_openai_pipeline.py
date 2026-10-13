@@ -71,7 +71,7 @@ class OpenAIPipelineTests(unittest.TestCase):
             self.assertTrue(book.scenes[0].locked)
             self.assertIn("Locked European village identity", images.kwargs["prompt"])
             self.assertIn("data:image/png;base64,", str(responses.kwargs["input"]))
-            self.assertIsNone(generated_path)
+            self.assertEqual(after, before)
 
 
 if __name__ == "__main__":
