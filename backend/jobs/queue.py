@@ -70,6 +70,7 @@ class FileJobQueue:
             attempts=data["attempts"],
             max_attempts=data["max_attempts"],
             error=data["error"],
+            claim_token=data.get("claim_token"),
         )
 
     def next(self) -> Job | None:
