@@ -6,9 +6,10 @@ from urllib.parse import urlparse
 from backend.orchestrator.engine import ProductionEngine
 from backend.runtime import Runtime
 from backend.api.status import system_status
+from backend.storage.file_store import FileProjectStore
 
 engine = ProductionEngine()
-runtime = Runtime()
+runtime = Runtime(store=FileProjectStore(os.getenv("COZY_PROJECTS_DIR",".cozy-data/projects")))
 
 
 def response(handler, status, payload):
@@ -69,10 +70,12 @@ class Handler(BaseHTTPRequestHandler):
                 book=next(b for b in project.series.books if b.position==int(position))
                 if action=="manifest":
                     engine.install_manifest(book,data["scenes"])
+                    runtime.persist(project)
                     return response(self,200,book_payload(book))
                 if action=="start":
                     engine.start_generation(book)
                     job=runtime.production.enqueue_next_scene(project.id,book)
+                    runtime.persist(project)
                     return response(self,202,{"book":book_payload(book),"job_id":job.id if job else None})
             except (KeyError,ValueError,StopIteration) as exc:
                 return response(self,422,{"error":str(exc)})
