@@ -79,6 +79,50 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertIsNotNone(claimed.claim_token)
         self.assertIsNone(second_claim)
 
+    def test_stale_claim_is_requeued_with_new_fence(self):
+        import psycopg
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(JobType.PLAN_BOOK, {"project_id": str(uuid4())}, max_attempts=3)
+        queue.enqueue(job)
+        first = queue.next()
+        old_token = first.claim_token
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (job.id,),
+            )
+
+        self.assertEqual(queue.recover_stale_running(60), (1, 0))
+        second = queue.next()
+        self.assertEqual(second.id, job.id)
+        self.assertEqual(second.attempts, 2)
+        self.assertNotEqual(second.claim_token, old_token)
+
+        first.succeed()
+        with self.assertRaisesRegex(RuntimeError, "job_claim_lost"):
+            queue.save(first)
+
+    def test_stale_claim_at_retry_limit_is_blocked(self):
+        import psycopg
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(
+            JobType.PLAN_BOOK,
+            {"project_id": str(uuid4())},
+            attempts=2,
+            max_attempts=3,
+        )
+        queue.enqueue(job)
+        claimed = queue.next()
+        self.assertEqual(claimed.attempts, 3)
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (job.id,),
+            )
+
+        self.assertEqual(queue.recover_stale_running(60), (0, 1))
+        self.assertIsNone(queue.next())
+
     def test_stale_worker_cannot_save_after_claim_is_invalidated(self):
         queue = PostgresJobQueue(self.database_url)
         job = Job(JobType.PLAN_BOOK, {"project_id": str(uuid4())})
