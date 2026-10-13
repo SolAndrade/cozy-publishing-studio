@@ -10,7 +10,8 @@ from backend.storage.file_store import FileProjectStore
 class Runtime:
     projects: dict[str, PublishingProject] = field(default_factory=dict)
     queue: object = field(default_factory=InMemoryJobQueue)
-    store: FileProjectStore | None = None
+    store: object | None = None
+    cache_projects: bool = True
 
     @property
     def production(self) -> ProductionController:
@@ -22,7 +23,7 @@ class Runtime:
         return project
 
     def get(self, project_id: str) -> PublishingProject:
-        if project_id in self.projects:
+        if self.cache_projects and project_id in self.projects:
             return self.projects[project_id]
         if self.store is not None:
             try:
