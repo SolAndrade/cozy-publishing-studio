@@ -39,6 +39,11 @@ class ProviderFactory:
         name=cls.vision_provider_name()
         if name=="mock":
             return MockVisualReviewer()
+        if name=="openai":
+            if not os.getenv("OPENAI_API_KEY","").strip():
+                raise ProviderNotConfigured("Missing OPENAI_API_KEY for visual review")
+            from backend.providers.openai_vision import OpenAIVisualReviewer
+            return OpenAIVisualReviewer()
         raise ProviderNotConfigured(f"Vision provider {name!r} is not implemented")
 
     @classmethod
