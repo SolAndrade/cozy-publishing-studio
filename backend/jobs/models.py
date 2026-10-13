@@ -30,6 +30,7 @@ class Job:
     attempts: int = 0
     max_attempts: int = 3
     error: str | None = None
+    claim_token: str | None = None
 
     def start(self) -> None:
         if self.status not in {JobStatus.QUEUED, JobStatus.FAILED}:
