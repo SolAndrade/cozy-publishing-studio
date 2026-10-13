@@ -8,6 +8,7 @@ from backend.runtime import Runtime
 from backend.api.status import system_status
 from backend.storage.file_store import FileProjectStore
 from backend.jobs.queue import FileJobQueue
+from backend.security.api_auth import authorize_header
 
 engine = ProductionEngine()
 runtime = Runtime(
@@ -38,14 +39,22 @@ def book_payload(book):
 class Handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self): response(self,204,{})
 
+    def authorized(self):
+        if authorize_header(self.headers.get("Authorization")):
+            return True
+        response(self,401,{"error":"unauthorized"})
+        return False
+
     def do_GET(self):
         path=urlparse(self.path).path
         if path=="/health":
             return response(self,200,{"status":"ok","service":"cozy-publishing-studio"})
         if path=="/api/status":
+            if not self.authorized(): return
             return response(self,200,system_status())
         parts=path.strip("/").split("/")
         if len(parts)==3 and parts[:2]==["api","projects"]:
+            if not self.authorized(): return
             try:
                 project=runtime.get(parts[2])
                 return response(self,200,{"id":project.id,"name":project.series.name,"books":[book_payload(b) for b in project.series.books]})
@@ -55,6 +64,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path=urlparse(self.path).path
+        if path.startswith("/api/") and not self.authorized(): return
         length=int(self.headers.get("Content-Length","0"))
         try: data=json.loads(self.rfile.read(length) or b"{}")
         except json.JSONDecodeError: return response(self,400,{"error":"invalid_json"})
