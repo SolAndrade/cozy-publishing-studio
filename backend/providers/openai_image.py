@@ -33,7 +33,7 @@ class OpenAIImageGenerator:
         if not response.data or not response.data[0].b64_json:
             raise RuntimeError("image_provider_returned_no_image")
         data = base64.b64decode(response.data[0].b64_json, validate=True)
-        if not data.startswith(b"\\x89PNG\\r\\n\\x1a\\n"):
+        if not data.startswith(bytes.fromhex("89504e470d0a1a0a")):
             raise RuntimeError("image_provider_returned_invalid_png")
         fd, path = mkstemp(prefix="cozy-scene-", suffix=".png")
         try:
