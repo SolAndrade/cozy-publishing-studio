@@ -1,0 +1,57 @@
+import os
+import unittest
+from uuid import uuid4
+
+from backend.domain.models import Book, Series
+from backend.domain.project import PublishingProject
+from backend.jobs.models import Job, JobStatus, JobType
+from backend.jobs.postgres_queue import PostgresJobQueue
+from backend.storage.postgres import PostgresProjectStore
+
+
+@unittest.skipUnless(os.getenv("COZY_TEST_DATABASE_URL"), "PostgreSQL test database not configured")
+class PostgresIntegrationTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.database_url = os.environ["COZY_TEST_DATABASE_URL"]
+
+    def setUp(self):
+        import psycopg
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute("DROP TABLE IF EXISTS cozy_jobs")
+            conn.execute("DROP TABLE IF EXISTS cozy_projects")
+
+    def test_project_round_trip(self):
+        store = PostgresProjectStore(self.database_url)
+        project = PublishingProject(
+            Series("Integration Series", [Book("Book One", "Subtitle", 1)])
+        )
+        store.save(project)
+
+        loaded = store.load(project.id)
+
+        self.assertEqual(loaded.id, project.id)
+        self.assertEqual(loaded.series.name, "Integration Series")
+        self.assertEqual(loaded.series.books[0].title, "Book One")
+
+    def test_job_claim_is_atomic(self):
+        queue_a = PostgresJobQueue(self.database_url)
+        queue_b = PostgresJobQueue(self.database_url)
+        job = Job(
+            JobType.PLAN_BOOK,
+            {"project_id": str(uuid4())},
+        )
+        queue_a.enqueue(job)
+
+        claimed = queue_a.next()
+        second_claim = queue_b.next()
+
+        self.assertIsNotNone(claimed)
+        self.assertEqual(claimed.id, job.id)
+        self.assertEqual(claimed.status, JobStatus.RUNNING)
+        self.assertEqual(claimed.attempts, 1)
+        self.assertIsNone(second_claim)
+
+
+if __name__ == "__main__":
+    unittest.main()
