@@ -35,7 +35,7 @@ class PostgresIntegrationTests(unittest.TestCase):
 
         self.assertEqual(loaded.id, project.id)
         self.assertEqual(loaded.series.name, "Integration Series")
-        self.assertEqual(loaded.series.books[0].title, "Book One")
+        self.assertEqual(loaded.series.books[0].title, "Book 1")
 
     def test_stale_running_job_is_blocked_without_requeue(self):
         import psycopg
