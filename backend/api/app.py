@@ -10,7 +10,10 @@ from backend.storage.file_store import FileProjectStore
 from backend.jobs.queue import FileJobQueue
 
 engine = ProductionEngine()
-runtime = Runtime(\n    store=FileProjectStore(os.getenv("COZY_PROJECTS_DIR",".cozy-data/projects")),\n    queue=FileJobQueue(os.getenv("COZY_JOBS_DIR",".cozy-data/jobs")),\n)
+runtime = Runtime(
+    store=FileProjectStore(os.getenv("COZY_PROJECTS_DIR",".cozy-data/projects")),
+    queue=FileJobQueue(os.getenv("COZY_JOBS_DIR",".cozy-data/jobs")),
+)
 
 
 def response(handler, status, payload):
