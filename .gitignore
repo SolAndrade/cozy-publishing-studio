@@ -11,3 +11,4 @@ build/
 artifacts/
 generated/
 secrets/
+.cozy-data/
