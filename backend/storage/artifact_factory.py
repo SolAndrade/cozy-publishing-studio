@@ -1,6 +1,7 @@
 import os
 
 from backend.storage.artifact_store import LocalArtifactStore
+from backend.storage.s3_artifact_store import S3ArtifactStore
 
 
 class ArtifactStoreNotConfigured(RuntimeError):
@@ -19,6 +20,16 @@ def artifact_store_from_env():
             )
         return LocalArtifactStore(
             os.getenv("COZY_ARTIFACTS_DIR", ".cozy-data/artifacts")
+        )
+
+    if provider == "s3":
+        bucket = os.getenv("COZY_S3_BUCKET", "").strip()
+        if not bucket:
+            raise ArtifactStoreNotConfigured("COZY_S3_BUCKET is required for S3 artifact storage")
+        return S3ArtifactStore(
+            bucket,
+            endpoint_url=os.getenv("COZY_S3_ENDPOINT", "").strip() or None,
+            region_name=os.getenv("COZY_S3_REGION", "").strip() or None,
         )
 
     raise ArtifactStoreNotConfigured(
