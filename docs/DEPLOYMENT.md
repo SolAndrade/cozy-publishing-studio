@@ -2,20 +2,41 @@
 
 ## Frontend
 
-The static dashboard is deployed by GitHub Actions to GitHub Pages.
+The public static dashboard is deployed to GitHub Pages. Do not put bearer tokens,
+provider credentials, database URLs or unpublished assets in `config.js`.
 
-## Private backend
+## Render API + PostgreSQL (staging bootstrap)
 
-GitHub Pages cannot execute Python or protect provider secrets. Deploy the Python service separately. A Render blueprint is included in `render.yaml`.
+`render.yaml` declares a web API and a private-network PostgreSQL database.
+Render supplies `DATABASE_URL` using a database reference and generates
+`COZY_API_TOKEN` privately. The API uses the same PostgreSQL database for
+projects and queued jobs. The health endpoint `GET /health` is public;
+`/api/*` requires the bearer token in production.
 
-Required production configuration is server-side only. Never add provider keys to the public frontend.
+To provision, connect the GitHub repository in the Render dashboard and create
+a Blueprint from `render.yaml`. Review resources and costs **before** approving
+creation. A free PostgreSQL instance is temporary (Render currently expires
+free databases after 30 days) and is NOT a durable commercial production plan.
+Choose a paid persistent database with backups before storing real production
+projects or book assets.
 
-After deployment, set the frontend API base URL in `config.js` to the HTTPS backend origin.
+Do not paste the generated API token into this public repository, GitHub Pages
+or chat. A static browser frontend cannot securely keep a shared bearer token.
+Before enabling private operations from the dashboard, implement a proper
+user login/session boundary or access-controlled private frontend.
 
-## Health check
+## Worker
 
-`GET /health` returns a small JSON status response.
+`python -m backend.workers.app` is the standalone worker command.
+**Do not deploy the worker yet**: production deliberately fails closed until
+real image and vision provider adapters are implemented and authorized.
+Render workers are separate services and need the same private database URL.
+PostgreSQL job claims use row locks to prevent simultaneous claims; crashed
+RUNNING jobs still require lease/recovery handling before reliable production use.
 
 ## Current boundary
 
-The API skeleton can create a validated five-book series. AI provider adapters and durable cloud persistence are intentionally separate modules and must be configured before production jobs can run.
+The API can persist projects and enqueue jobs in PostgreSQL, but end-to-end
+production generation is not ready. Real provider adapters, crash recovery,
+private artifact storage, authentication suitable for the browser, and KDP draft
+integration are still outstanding. Final publication always requires a human.
