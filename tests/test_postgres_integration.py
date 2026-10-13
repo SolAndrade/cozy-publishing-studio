@@ -24,7 +24,10 @@ class PostgresIntegrationTests(unittest.TestCase):
     def test_project_round_trip(self):
         store = PostgresProjectStore(self.database_url)
         project = PublishingProject(
-            Series("Integration Series", [Book("Book One", "Subtitle", 1)])
+            Series(
+                "Integration Series",
+                [Book(f"Book {i}", "Subtitle", i) for i in range(1, 6)],
+            )
         )
         store.save(project)
 
