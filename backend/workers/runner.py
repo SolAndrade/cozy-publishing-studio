@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from backend.jobs.models import Job, JobStatus, JobType
+from backend.jobs.errors import RetryableJobError\nfrom backend.jobs.models import Job, JobStatus, JobType
 
 
 Handler = Callable[[dict], None]
