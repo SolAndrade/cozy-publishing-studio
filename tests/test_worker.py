@@ -57,6 +57,7 @@ class WorkerTests(unittest.TestCase):
     def test_named_but_unimplemented_provider_does_not_fake_readiness(self):
         env={
             "COZY_ENV":"production",
+            "COZY_ENABLE_PAID_PROVIDERS":"true",
             "COZY_IMAGE_PROVIDER":"real-image",
             "COZY_VISION_PROVIDER":"real-vision",
             "COZY_ARTIFACT_STORE":"s3",
