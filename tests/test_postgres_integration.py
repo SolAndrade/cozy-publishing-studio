@@ -40,7 +40,7 @@ class PostgresIntegrationTests(unittest.TestCase):
     def test_stale_project_copy_cannot_overwrite_newer_save(self):
         store_a = PostgresProjectStore(self.database_url)
         project = PublishingProject(
-            Series("Concurrent Series", [Book("Book 1", "Subtitle", 1)])
+            Series("Concurrent Series", [Book(f"Book {i}", "Subtitle", i) for i in range(1, 6)])
         )
         store_a.save(project)
 
