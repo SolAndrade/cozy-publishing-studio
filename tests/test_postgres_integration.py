@@ -57,6 +57,45 @@ class PostgresIntegrationTests(unittest.TestCase):
 
         self.assertEqual(store_a.load(project.id).series.name, "First writer")
 
+    def test_reviewed_blocked_job_can_be_explicitly_requeued(self):
+        import psycopg
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(JobType.PLAN_BOOK, {"project_id": str(uuid4())}, max_attempts=3)
+        queue.enqueue(job)
+        claimed = queue.next()
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (claimed.id,),
+            )
+        self.assertEqual(queue.block_stale_running(60), 1)
+
+        queue.requeue_blocked(job.id)
+        retried = queue.next()
+        self.assertEqual(retried.id, job.id)
+        self.assertEqual(retried.attempts, 2)
+
+    def test_exhausted_blocked_job_cannot_be_manually_requeued(self):
+        import psycopg
+        queue = PostgresJobQueue(self.database_url)
+        job = Job(
+            JobType.PLAN_BOOK,
+            {"project_id": str(uuid4())},
+            attempts=2,
+            max_attempts=3,
+        )
+        queue.enqueue(job)
+        claimed = queue.next()
+        with psycopg.connect(self.database_url) as conn:
+            conn.execute(
+                "UPDATE cozy_jobs SET updated_at=NOW() - INTERVAL '1 hour' WHERE id=%s",
+                (claimed.id,),
+            )
+        self.assertEqual(queue.block_stale_running(60), 1)
+
+        with self.assertRaisesRegex(RuntimeError, "job_not_requeueable"):
+            queue.requeue_blocked(job.id)
+
     def test_stale_running_job_is_blocked_without_requeue(self):
         import psycopg
         queue = PostgresJobQueue(self.database_url)
