@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory\nfrom uuid import uuid4
+from tempfile import TemporaryDirectory
+from uuid import uuid4
 
 from backend.domain.states import QAResult
 from backend.jobs.models import Job, JobType
@@ -35,7 +36,8 @@ class ProductionWorker:
             review_payload["image_path"]=path
         else:
             suffix=Path(path).suffix or ".png"
-            key=(f"projects/{project.id}/books/{book.position}/scenes/{scene.number}/"\n                 f"generation-{scene.generations}-{uuid4().hex}{suffix}")
+            key=(f"projects/{project.id}/books/{book.position}/scenes/{scene.number}/"
+                 f"generation-{scene.generations}-{uuid4().hex}{suffix}")
             try:
                 review_payload["image_artifact"]=self.artifact_store.put(path,key)
             finally:
