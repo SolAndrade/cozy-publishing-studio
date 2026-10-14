@@ -7,7 +7,7 @@ from backend.orchestrator.engine import ProductionEngine
 class OrchestratorTests(unittest.TestCase):
     def test_create_series_and_install_manifest(self):
         engine = ProductionEngine()
-        concepts = [(f"Book {i}", f"Subtitle {i}") for i in range(1, 6)]
+        concepts = [(f"Book {i}", f"Subtitle {i}", f"Visual identity {i}") for i in range(1, 6)]
         project = engine.create_series("Series", concepts)
         self.assertEqual(len(project.series.books), 5)
 
@@ -18,6 +18,19 @@ class OrchestratorTests(unittest.TestCase):
 
         engine.start_generation(book)
         self.assertEqual(book.state, BookState.GENERATING)
+
+    def test_generation_rejects_missing_locked_visual_brief_without_state_change(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series", [(f"Book {i}", f"Subtitle {i}") for i in range(1, 6)]
+        )
+        book = project.series.books[0]
+        engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+
+        with self.assertRaisesRegex(ValueError, "locked visual brief"):
+            engine.start_generation(book)
+
+        self.assertEqual(book.state, BookState.BOOK_PLANNED)
 
     def test_subtitle_is_not_implicitly_used_as_visual_brief(self):
         engine = ProductionEngine()
