@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
-from backend.jobs.errors import RetryableJobError\nfrom backend.jobs.models import Job, JobStatus, JobType
+from backend.jobs.errors import RetryableJobError
+from backend.jobs.models import Job, JobStatus, JobType
 
 
 Handler = Callable[[dict], None]
@@ -24,6 +25,21 @@ class Worker:
                 raise RuntimeError(f"No handler registered for {job.type}")
             handler(job.payload)
             job.succeed()
+        except RetryableJobError as exc:
+            if job.status == JobStatus.RUNNING:
+                job.error = str(exc)
+                job.status = (
+                    JobStatus.QUEUED
+                    if job.attempts < job.max_attempts
+                    else JobStatus.BLOCKED
+                )
+                if job.status == JobStatus.QUEUED:
+                    requeue = getattr(self.queue, "requeue_claimed", None)
+                    if requeue is None:
+                        job.claim_token = None
+                        self.queue.enqueue(job)
+                    else:
+                        requeue(job)
         except Exception as exc:
             if job.status == JobStatus.RUNNING:
                 job.fail(str(exc))
