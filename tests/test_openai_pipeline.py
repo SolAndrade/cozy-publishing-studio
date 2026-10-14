@@ -73,5 +73,7 @@ class OpenAIPipelineTests(unittest.TestCase):
             self.assertIsNotNone(book.scenes[0].image_artifact)
             self.assertIn("Locked European village identity", images.kwargs["prompt"])
             self.assertIn("data:image/png;base64,", str(responses.kwargs["input"]))
+            self.assertIn("Book identity: Locked European village identity", str(responses.kwargs["input"]))
+            self.assertIn("Scene: Scene 1", str(responses.kwargs["input"]))
             self.assertEqual(after, before)
 
