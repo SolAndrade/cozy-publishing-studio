@@ -43,6 +43,17 @@ class WorkerTests(unittest.TestCase):
             with self.assertRaisesRegex(ProviderNotConfigured,"mock"):
                 build_worker(Runtime())
 
+    def test_production_requires_explicit_paid_provider_opt_in(self):
+        env = {
+            "COZY_ENV": "production",
+            "COZY_IMAGE_PROVIDER": "openai",
+            "COZY_VISION_PROVIDER": "openai",
+            "OPENAI_API_KEY": "test-only",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            with self.assertRaisesRegex(ProviderNotConfigured, "explicit"):
+                build_worker(Runtime())
+
     def test_named_but_unimplemented_provider_does_not_fake_readiness(self):
         env={
             "COZY_ENV":"production",
