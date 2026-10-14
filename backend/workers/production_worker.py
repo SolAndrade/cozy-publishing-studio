@@ -57,11 +57,15 @@ class ProductionWorker:
             if self.artifact_store is None:
                 raise RuntimeError("artifact_store_required_for_review")
             with TemporaryDirectory() as temp_dir:
-                destination=str(Path(temp_dir)/"scene-image")
-                image_path=self.artifact_store.materialize(payload["image_artifact"],destination)
-                verdict=self.visual_reviewer.review(image_path, scene.title)
+                artifact = payload["image_artifact"]
+                suffix = Path(artifact.get("key", "")).suffix or ".png"
+                destination = str(Path(temp_dir) / f"scene-image{suffix}")
+                image_path = self.artifact_store.materialize(artifact, destination)
+                review_brief = f"Book identity: {book.locked_brief}\nScene: {scene.title}"
+                verdict = self.visual_reviewer.review(image_path, review_brief)
         else:
-            verdict=self.visual_reviewer.review(payload["image_path"], scene.title)
+            review_brief = f"Book identity: {book.locked_brief}\nScene: {scene.title}"
+            verdict = self.visual_reviewer.review(payload["image_path"], review_brief)
         result=QAResult(verdict["result"])
         reason=verdict.get("reason","")
         if result==QAResult.PASS:
