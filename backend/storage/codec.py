@@ -20,12 +20,14 @@ def project_from_json(payload: str) -> PublishingProject:
                 generations=s["generations"],
                 qa_result=QAResult(s["qa_result"]) if s["qa_result"] else None,
                 material_defect=s["material_defect"],
+                image_artifact=s.get("image_artifact"),
             )
             for s in b["scenes"]
         ]
         books.append(Book(
             title=b["title"],subtitle=b["subtitle"],position=b["position"],
-            scenes=scenes,state=BookState(b["state"]),
+            locked_brief=b.get("locked_brief", ""),scenes=scenes,
+            state=BookState(b["state"]),
         ))
     return PublishingProject(
         Series(data["series"]["name"],books),id=data["id"],
