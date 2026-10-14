@@ -60,6 +60,12 @@ class ProductionWorker:
         scene.qa(result)
         self.runtime.persist(project)
         if result==QAResult.PASS:
+            if self.artifact_store is not None:
+                artifact=payload.get("image_artifact")
+                if not artifact:
+                    raise RuntimeError("approved_scene_requires_durable_artifact")
+                scene.image_artifact=artifact
+                self.runtime.persist(project)
             self.runtime.production.enqueue_next_scene(project.id,book)
             return
         if result==QAResult.REGENERATE:
