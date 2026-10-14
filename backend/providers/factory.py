@@ -46,12 +46,18 @@ class ProviderFactory:
             return OpenAIVisualReviewer()
         raise ProviderNotConfigured(f"Vision provider {name!r} is not implemented")
 
+    @staticmethod
+    def _adapter_configured(name: str) -> bool:
+        if name == "mock":
+            return True
+        if name == "openai":
+            return bool(os.getenv("OPENAI_API_KEY", "").strip())
+        return False
+
     @classmethod
     def readiness(cls) -> dict:
-        image=cls.image_provider_name()
-        vision=cls.vision_provider_name()
         return {
             "text_planner": bool(cls.text_provider_name()),
-            "image_generator": image=="mock",
-            "visual_reviewer": vision=="mock",
+            "image_generator": cls._adapter_configured(cls.image_provider_name()),
+            "visual_reviewer": cls._adapter_configured(cls.vision_provider_name()),
         }
