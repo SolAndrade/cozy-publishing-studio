@@ -1,7 +1,7 @@
 import importlib
 import os,unittest
 from unittest.mock import patch
-from backend.api.app import series_concepts
+from backend.api.app import book_payload, series_concepts
 from backend.api.status import system_status
 
 
@@ -40,6 +40,21 @@ class APIStatusTests(unittest.TestCase):
             {"books": [{"title": "Village Corners", "subtitle": "Marketing subtitle"}]}
         )
         self.assertEqual(concepts[0], ("Village Corners", "Marketing subtitle", ""))
+
+    def test_book_payload_exposes_locked_brief(self):
+        from backend.domain.models import Book
+
+        payload = book_payload(
+            Book(
+                title="Village Corners",
+                subtitle="A cozy coloring book",
+                position=1,
+                locked_brief="European village line-art identity",
+            )
+        )
+        self.assertEqual(
+            payload["locked_brief"], "European village line-art identity"
+        )
 
     def test_api_module_imports(self):
         module=importlib.import_module("backend.api.app")
