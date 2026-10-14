@@ -9,13 +9,30 @@ from backend.domain.states import BookState
 class ProductionEngine:
     """Pure orchestration core. External AI/storage adapters plug in later."""
 
-    def create_series(self, name: str, concepts: list[tuple[str, str]]) -> PublishingProject:
+    def create_series(
+        self, name: str, concepts: list[tuple[str, str] | tuple[str, str, str]]
+    ) -> PublishingProject:
         if len(concepts) != 5:
             raise ValueError("Production requires exactly five approved book concepts")
-        books = [
-            Book(title=title.strip(), subtitle=subtitle.strip(), position=index, locked_brief=subtitle.strip())
-            for index, (title, subtitle) in enumerate(concepts, start=1)
-        ]
+        books = []
+        for index, concept in enumerate(concepts, start=1):
+            if len(concept) == 2:
+                title, subtitle = concept
+                locked_brief = ""
+            elif len(concept) == 3:
+                title, subtitle, locked_brief = concept
+            else:
+                raise ValueError(
+                    "Each book concept requires title/subtitle and optional locked brief"
+                )
+            books.append(
+                Book(
+                    title=title.strip(),
+                    subtitle=subtitle.strip(),
+                    position=index,
+                    locked_brief=locked_brief.strip(),
+                )
+            )
         return PublishingProject(Series(name=name.strip(), books=books))
 
     def install_manifest(self, book: Book, scenes: list[str]) -> None:
