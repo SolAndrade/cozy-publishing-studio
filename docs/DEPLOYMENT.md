@@ -28,15 +28,18 @@ user login/session boundary or access-controlled private frontend.
 ## Worker
 
 `python -m backend.workers.app` is the standalone worker command.
-**Do not deploy the worker yet**: production deliberately fails closed until
-real image and vision provider adapters are implemented and authorized.
-Render workers are separate services and need the same private database URL.
-PostgreSQL job claims use row locks to prevent simultaneous claims; crashed
-RUNNING jobs still require lease/recovery handling before reliable production use.
+**Do not deploy the worker yet**. OpenAI image/vision adapters exist, but real provider
+execution remains deliberately disabled unless `COZY_ENABLE_PAID_PROVIDERS=true` is
+set in the private worker environment. Do not enable that flag without explicit cost
+authorization. Render workers are separate services and need the same private database
+URL plus durable private artifact storage. PostgreSQL jobs use atomic claims and claim
+tokens; stale RUNNING jobs are blocked in production for explicit review rather than
+automatically replayed.
 
 ## Current boundary
 
-The API can persist projects and enqueue jobs in PostgreSQL, but end-to-end
-production generation is not ready. Real provider adapters, crash recovery,
-private artifact storage, authentication suitable for the browser, and KDP draft
-integration are still outstanding. Final publication always requires a human.
+The API can persist projects and enqueue jobs in PostgreSQL. Provider adapters and
+stale-job fencing are implemented, but end-to-end production generation remains
+disabled until a durable private artifact store, an access boundary suitable for the
+browser, and explicitly authorized provider execution are configured. KDP draft
+integration is still outstanding. Final publication always requires a human.
