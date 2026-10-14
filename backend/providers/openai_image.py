@@ -15,6 +15,7 @@ class OpenAIImageGenerator:
             from openai import OpenAI
             client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
         self.client = client
+        self._owned_paths: set[str] = set()
 
     def generate(self, payload: dict) -> str:
         request = GenerationRequest(
@@ -42,4 +43,11 @@ class OpenAIImageGenerator:
         except BaseException:
             Path(path).unlink(missing_ok=True)
             raise
+        self._owned_paths.add(path)
         return path
+
+    def owns_generated_path(self, path: str) -> bool:
+        return path in self._owned_paths
+
+    def release_generated_path(self, path: str) -> None:
+        self._owned_paths.discard(path)
