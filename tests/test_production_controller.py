@@ -9,7 +9,7 @@ from backend.jobs.queue import InMemoryJobQueue
 class ControllerTests(unittest.TestCase):
     def make_book(self):
         engine=ProductionEngine()
-        project=engine.create_series("S", [(f"B{i}", "") for i in range(1,6)])
+        project=engine.create_series("S", [(f"B{i}", "", "Locked visual identity") for i in range(1,6)])
         book=project.series.books[0]
         engine.install_manifest(book, [f"Scene {i}" for i in range(1,41)])
         engine.start_generation(book)
