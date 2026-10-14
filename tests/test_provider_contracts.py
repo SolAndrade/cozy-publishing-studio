@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from backend.providers.factory import ProviderFactory
 from backend.providers.image_contract import GenerationRequest, build_coloring_prompt
 from backend.providers.review_contract import normalize_review
 from backend.providers.registry import ProviderState, provider_status
@@ -19,6 +20,27 @@ class ContractTests(unittest.TestCase):
 
     def test_review_accepts_pass(self):
         self.assertEqual(normalize_review({"result":"PASS"})["result"],"PASS")
+
+    def test_factory_readiness_accepts_configured_openai_adapters(self):
+        env = {
+            "COZY_IMAGE_PROVIDER": "openai",
+            "COZY_VISION_PROVIDER": "openai",
+            "OPENAI_API_KEY": "test-only",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            readiness = ProviderFactory.readiness()
+        self.assertTrue(readiness["image_generator"])
+        self.assertTrue(readiness["visual_reviewer"])
+
+    def test_factory_readiness_blocks_openai_without_secret(self):
+        env = {
+            "COZY_IMAGE_PROVIDER": "openai",
+            "COZY_VISION_PROVIDER": "openai",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            readiness = ProviderFactory.readiness()
+        self.assertFalse(readiness["image_generator"])
+        self.assertFalse(readiness["visual_reviewer"])
 
     def test_s3_storage_requires_bucket_and_credentials(self):
         env={
