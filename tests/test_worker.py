@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch
 
+from backend.jobs.errors import RetryableJobError
 from backend.jobs.models import Job, JobStatus, JobType
 from backend.jobs.queue import InMemoryJobQueue
 from backend.runtime import Runtime
@@ -27,6 +28,72 @@ class WorkerTests(unittest.TestCase):
         job = worker.run_one()
         self.assertEqual(job.status, JobStatus.FAILED)
         self.assertIn("No handler", job.error)
+
+    def test_generic_handler_error_is_failed_not_retried(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue(Job(JobType.PLAN_BOOK, {}))
+
+        def fail(_payload):
+            raise RuntimeError("permanent failure")
+
+        job = Worker(queue, {JobType.PLAN_BOOK: fail}).run_one()
+        self.assertEqual(job.status, JobStatus.FAILED)
+        self.assertEqual(job.attempts, 1)
+        self.assertIn("permanent failure", job.error)
+
+    def test_retryable_error_requeues_when_attempts_remain(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue(Job(JobType.PLAN_BOOK, {}, max_attempts=3))
+
+        def retry(_payload):
+            raise RetryableJobError("temporary failure")
+
+        job = Worker(queue, {JobType.PLAN_BOOK: retry}).run_one()
+        self.assertEqual(job.status, JobStatus.QUEUED)
+        self.assertEqual(job.attempts, 1)
+        self.assertIn("temporary failure", job.error)
+
+    def test_retryable_error_blocks_at_attempt_limit(self):
+        queue = InMemoryJobQueue()
+        queue.enqueue(Job(JobType.PLAN_BOOK, {}, attempts=2, max_attempts=3))
+
+        def retry(_payload):
+            raise RetryableJobError("still temporary")
+
+        job = Worker(queue, {JobType.PLAN_BOOK: retry}).run_one()
+        self.assertEqual(job.status, JobStatus.BLOCKED)
+        self.assertEqual(job.attempts, 3)
+
+    def test_retryable_claim_uses_fenced_requeue(self):
+        class FencedQueue:
+            def __init__(self):
+                self.job = Job(
+                    JobType.PLAN_BOOK,
+                    {},
+                    status=JobStatus.RUNNING,
+                    attempts=1,
+                    claim_token="claim-1",
+                )
+                self.requeued = None
+
+            def next(self):
+                job, self.job = self.job, None
+                return job
+
+            def requeue_claimed(self, job):
+                self.requeued = job
+
+            def save(self, job):
+                pass
+
+        queue = FencedQueue()
+
+        def retry(_payload):
+            raise RetryableJobError("temporary")
+
+        job = Worker(queue, {JobType.PLAN_BOOK: retry}).run_one()
+        self.assertIs(queue.requeued, job)
+        self.assertEqual(job.status, JobStatus.QUEUED)
 
     def test_production_worker_fails_closed_without_real_providers(self):
         with patch.dict(os.environ,{"COZY_ENV":"production"},clear=True):
