@@ -66,5 +66,39 @@ class ProductionWorkerTests(unittest.TestCase):
         self.assertIsNone(scene.image_artifact)
 
 
+    def test_generation_does_not_delete_unowned_provider_path(self):
+        engine = ProductionEngine()
+        runtime = Runtime()
+        project = runtime.add(engine.create_series("S", [(f"B{i}", "") for i in range(1, 6)]))
+        book = project.series.books[0]
+        engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+        engine.start_generation(book)
+        scene = book.scenes[0]
+
+        with tempfile.TemporaryDirectory() as d:
+            source = __import__("pathlib").Path(d) / "provider-owned.png"
+            source.write_bytes(b"provider fixture")
+
+            class ExternalPathGenerator:
+                def generate(self, payload):
+                    return str(source)
+
+            production = ProductionWorker(
+                runtime,
+                ExternalPathGenerator(),
+                MockVisualReviewer(),
+                LocalArtifactStore(f"{d}/artifacts"),
+            )
+            production.generate({
+                "project_id": project.id,
+                "book_position": book.position,
+                "scene_number": scene.number,
+                "title": scene.title,
+                "locked_brief": book.locked_brief,
+            })
+
+            self.assertTrue(source.exists())
+
+
 if __name__=="__main__":
     unittest.main()
