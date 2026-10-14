@@ -62,17 +62,16 @@ class OpenAIPipelineTests(unittest.TestCase):
                     runtime, generator, reviewer, LocalArtifactStore(f"{d}/artifacts")
                 ).handlers(),
             )
+            before = set(Path("/tmp").glob("cozy-scene-*.png"))
             generated = worker.run_one()
-            generated_path = next(Path("/tmp").glob("cozy-scene-*.png"), None)
+            after = set(Path("/tmp").glob("cozy-scene-*.png"))
             reviewed = worker.run_one()
 
             self.assertIsNotNone(generated)
             self.assertIsNotNone(reviewed)
             self.assertTrue(book.scenes[0].locked)
+            self.assertIsNotNone(book.scenes[0].image_artifact)
             self.assertIn("Locked European village identity", images.kwargs["prompt"])
             self.assertIn("data:image/png;base64,", str(responses.kwargs["input"]))
             self.assertEqual(after, before)
 
-
-if __name__ == "__main__":
-    unittest.main()
