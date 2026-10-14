@@ -38,6 +38,7 @@ def series_concepts(payload):
 def book_payload(book):
     return {
         "position":book.position,"title":book.title,"subtitle":book.subtitle,
+        "locked_brief":book.locked_brief,
         "state":book.state,"progress":runtime.production.progress(book),
         "scenes":[{"number":s.number,"title":s.title,"state":s.state,"generations":s.generations} for s in book.scenes],
     }
