@@ -9,7 +9,7 @@ from backend.production.recovery import recovery_job
 class RecoveryTests(unittest.TestCase):
     def test_resume_at_first_unlocked(self):
         e=ProductionEngine()
-        p=e.create_series("S",[(f"B{i}","") for i in range(1,6)])
+        p=e.create_series("S",[(f"B{i}", "", "Locked visual identity") for i in range(1,6)])
         b=p.series.books[0]
         e.install_manifest(b,[f"Scene {i}" for i in range(1,41)])
         e.start_generation(b)
