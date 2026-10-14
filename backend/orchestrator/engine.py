@@ -48,4 +48,6 @@ class ProductionEngine:
     def start_generation(self, book: Book) -> None:
         if len(book.scenes) != 40:
             raise ValueError("Generation requires a complete 40-scene manifest")
+        if not book.locked_brief.strip():
+            raise ValueError("Generation requires a locked visual brief")
         book.advance(BookState.GENERATING)
