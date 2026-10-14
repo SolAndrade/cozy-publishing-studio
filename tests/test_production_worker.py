@@ -14,7 +14,7 @@ class ProductionWorkerTests(unittest.TestCase):
     def test_mock_pipeline_locks_all_40(self):
         engine=ProductionEngine()
         runtime=Runtime()
-        project=runtime.add(engine.create_series("S",[(f"B{i}","") for i in range(1,6)]))
+        project=runtime.add(engine.create_series("S",[(f"B{i}", "", "Locked visual identity") for i in range(1,6)]))
         book=project.series.books[0]
         engine.install_manifest(book,[f"Scene {i}" for i in range(1,41)])
         engine.start_generation(book)
@@ -37,7 +37,7 @@ class ProductionWorkerTests(unittest.TestCase):
     def test_pass_without_durable_artifact_does_not_lock_scene(self):
         engine = ProductionEngine()
         runtime = Runtime()
-        project = runtime.add(engine.create_series("S", [(f"B{i}", "") for i in range(1, 6)]))
+        project = runtime.add(engine.create_series("S", [(f"B{i}", "", "Locked visual identity") for i in range(1, 6)]))
         book = project.series.books[0]
         engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
         engine.start_generation(book)
@@ -69,7 +69,7 @@ class ProductionWorkerTests(unittest.TestCase):
     def test_generation_does_not_delete_unowned_provider_path(self):
         engine = ProductionEngine()
         runtime = Runtime()
-        project = runtime.add(engine.create_series("S", [(f"B{i}", "") for i in range(1, 6)]))
+        project = runtime.add(engine.create_series("S", [(f"B{i}", "", "Locked visual identity") for i in range(1, 6)]))
         book = project.series.books[0]
         engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
         engine.start_generation(book)
