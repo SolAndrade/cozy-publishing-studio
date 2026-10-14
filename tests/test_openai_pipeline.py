@@ -41,8 +41,8 @@ class OpenAIPipelineTests(unittest.TestCase):
     def test_generation_storage_and_visual_review_lock_scene(self):
         engine = ProductionEngine()
         runtime = Runtime()
-        concepts = [("Book 1", "Locked European village identity")] + [
-            (f"Book {i}", f"Brief {i}") for i in range(2, 6)
+        concepts = [("Book 1", "A cozy coloring book", "Locked European village identity")] + [
+            (f"Book {i}", f"Subtitle {i}", f"Visual identity {i}") for i in range(2, 6)
         ]
         project = runtime.add(engine.create_series("Series", concepts))
         book = project.series.books[0]
