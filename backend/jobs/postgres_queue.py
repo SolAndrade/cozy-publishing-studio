@@ -151,7 +151,9 @@ class PostgresJobQueue:
             row=conn.execute(
                 "SELECT COUNT(*) FROM cozy_jobs WHERE status=%s",(JobStatus.QUEUED.value,)
             ).fetchone()
-        return row[0]\n\n    def heartbeat(self, job: Job) -> None:
+        return row[0]
+
+    def heartbeat(self, job: Job) -> None:
         """Renew an active claim without allowing a stale worker to revive it."""
         if not job.claim_token:
             raise RuntimeError("job_claim_required_for_heartbeat")
