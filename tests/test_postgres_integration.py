@@ -37,6 +37,26 @@ class PostgresIntegrationTests(unittest.TestCase):
         self.assertEqual(loaded.series.name, "Integration Series")
         self.assertEqual(loaded.series.books[0].title, "Book 1")
 
+    def test_stale_project_copy_cannot_overwrite_newer_save(self):
+        store_a = PostgresProjectStore(self.database_url)
+        project = PublishingProject(
+            Series("Concurrent Series", [Book("Book 1", "Subtitle", 1)])
+        )
+        store_a.save(project)
+
+        store_b = PostgresProjectStore(self.database_url)
+        copy_a = store_a.load(project.id)
+        copy_b = store_b.load(project.id)
+
+        copy_a.series.name = "First writer"
+        store_a.save(copy_a)
+
+        copy_b.series.name = "Stale second writer"
+        with self.assertRaisesRegex(RuntimeError, "project_write_conflict"):
+            store_b.save(copy_b)
+
+        self.assertEqual(store_a.load(project.id).series.name, "First writer")
+
     def test_stale_running_job_is_blocked_without_requeue(self):
         import psycopg
         queue = PostgresJobQueue(self.database_url)
