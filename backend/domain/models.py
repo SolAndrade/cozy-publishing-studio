@@ -27,6 +27,7 @@ class Scene:
     generations: int = 0
     qa_result: QAResult | None = None
     material_defect: str | None = None
+    image_artifact: dict | None = None
 
     def record_generation(self) -> None:
         if self.state == SceneState.ART_LOCKED:
