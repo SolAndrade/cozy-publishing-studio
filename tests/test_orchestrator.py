@@ -19,6 +19,25 @@ class OrchestratorTests(unittest.TestCase):
         engine.start_generation(book)
         self.assertEqual(book.state, BookState.GENERATING)
 
+    def test_subtitle_is_not_implicitly_used_as_visual_brief(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series", [(f"Book {i}", f"Marketing subtitle {i}") for i in range(1, 6)]
+        )
+        self.assertEqual(project.series.books[0].subtitle, "Marketing subtitle 1")
+        self.assertEqual(project.series.books[0].locked_brief, "")
+
+    def test_explicit_visual_brief_is_preserved(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series",
+            [
+                (f"Book {i}", f"Subtitle {i}", f"Visual identity {i}")
+                for i in range(1, 6)
+            ],
+        )
+        self.assertEqual(project.series.books[0].locked_brief, "Visual identity 1")
+
     def test_manifest_rejects_duplicates(self):
         engine = ProductionEngine()
         project = engine.create_series("Series", [(f"B{i}", "S") for i in range(5)])
