@@ -41,7 +41,12 @@ class ProductionWorker:
             try:
                 review_payload["image_artifact"]=self.artifact_store.put(path,key)
             finally:
-                Path(path).unlink(missing_ok=True)
+                owns_path = getattr(self.image_generator, "owns_generated_path", None)
+                if owns_path is not None and owns_path(path):
+                    Path(path).unlink(missing_ok=True)
+                    release_path = getattr(self.image_generator, "release_generated_path", None)
+                    if release_path is not None:
+                        release_path(path)
         self.runtime.queue.enqueue(Job(JobType.REVIEW_SCENE,review_payload))
 
     def review(self, payload):
