@@ -126,6 +126,24 @@ class PostgresJobQueue:
             )
             return result.rowcount
 
+    def requeue_blocked(self, job_id: str) -> None:
+        """Explicitly requeue one reviewed BLOCKED job without resetting attempts."""
+        with self._connect() as conn:
+            result = conn.execute(
+                """UPDATE cozy_jobs
+                   SET status=%s,
+                       error='manually_requeued_after_review',
+                       claim_token=NULL,
+                       updated_at=NOW()
+                   WHERE id=%s
+                     AND status=%s
+                     AND claim_token IS NULL
+                     AND attempts < max_attempts""",
+                (JobStatus.QUEUED.value, job_id, JobStatus.BLOCKED.value),
+            )
+            if result.rowcount != 1:
+                raise RuntimeError("job_not_requeueable")
+
     def save(self, job: Job) -> None:
         with self._connect() as conn:
             if job.claim_token:
