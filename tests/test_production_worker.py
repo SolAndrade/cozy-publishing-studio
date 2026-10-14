@@ -34,5 +34,37 @@ class ProductionWorkerTests(unittest.TestCase):
         self.assertEqual(book.state,BookState.ART_LOCKED)
 
 
+    def test_pass_without_durable_artifact_does_not_lock_scene(self):
+        engine = ProductionEngine()
+        runtime = Runtime()
+        project = runtime.add(engine.create_series("S", [(f"B{i}", "") for i in range(1, 6)]))
+        book = project.series.books[0]
+        engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+        engine.start_generation(book)
+        scene = book.scenes[0]
+
+        class PassingReviewer:
+            def review(self, image_path, title):
+                return {"result": "PASS", "reason": ""}
+
+        with tempfile.TemporaryDirectory() as d:
+            production = ProductionWorker(
+                runtime,
+                MockImageGenerator(f"{d}/generated"),
+                PassingReviewer(),
+                LocalArtifactStore(f"{d}/artifacts"),
+            )
+            with self.assertRaisesRegex(RuntimeError, "approved_scene_requires_durable_artifact"):
+                production.review({
+                    "project_id": project.id,
+                    "book_position": book.position,
+                    "scene_number": scene.number,
+                    "image_path": f"{d}/not-used.png",
+                })
+
+        self.assertFalse(scene.locked)
+        self.assertIsNone(scene.image_artifact)
+
+
 if __name__=="__main__":
     unittest.main()
