@@ -59,17 +59,18 @@ class ProductionWorker:
             verdict=self.visual_reviewer.review(payload["image_path"], scene.title)
         result=QAResult(verdict["result"])
         reason=verdict.get("reason","")
-        scene.qa(result)
-        self.runtime.persist(project)
         if result==QAResult.PASS:
             if self.artifact_store is not None:
                 artifact=payload.get("image_artifact")
                 if not artifact:
                     raise RuntimeError("approved_scene_requires_durable_artifact")
                 scene.image_artifact=artifact
-                self.runtime.persist(project)
+            scene.qa(result)
+            self.runtime.persist(project)
             self.runtime.production.enqueue_next_scene(project.id,book)
             return
+        scene.qa(result)
+        self.runtime.persist(project)
         if result==QAResult.REGENERATE:
             scene.record_material_defect(reason or "material visual defect")
             self.runtime.persist(project)
