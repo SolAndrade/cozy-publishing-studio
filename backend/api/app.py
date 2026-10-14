@@ -24,6 +24,17 @@ def response(handler, status, payload):
     handler.wfile.write(body)
 
 
+def series_concepts(payload):
+    return [
+        (
+            item["title"],
+            item.get("subtitle", ""),
+            item.get("locked_brief", ""),
+        )
+        for item in payload["books"]
+    ]
+
+
 def book_payload(book):
     return {
         "position":book.position,"title":book.title,"subtitle":book.subtitle,
@@ -67,7 +78,7 @@ class Handler(BaseHTTPRequestHandler):
 
         if path=="/api/series":
             try:
-                concepts=[(x["title"],x.get("subtitle","")) for x in data["books"]]
+                concepts=series_concepts(data)
                 project=runtime.add(engine.create_series(data["name"],concepts))
                 return response(self,201,{"id":project.id,"name":project.series.name,"books":[book_payload(b) for b in project.series.books]})
             except (KeyError,ValueError) as exc: return response(self,422,{"error":str(exc)})
