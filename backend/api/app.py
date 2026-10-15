@@ -94,6 +94,10 @@ class Handler(BaseHTTPRequestHandler):
                     engine.install_manifest(book,data["scenes"])
                     runtime.persist(project)
                     return response(self,200,book_payload(book))
+                if action=="brief":
+                    engine.set_locked_brief(book,data["locked_brief"])
+                    runtime.persist(project)
+                    return response(self,200,book_payload(book))
                 if action=="start":
                     engine.start_generation(book)
                     job=runtime.production.enqueue_next_scene(project.id,book)
