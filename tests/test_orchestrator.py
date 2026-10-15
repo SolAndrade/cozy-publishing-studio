@@ -51,6 +51,46 @@ class OrchestratorTests(unittest.TestCase):
         )
         self.assertEqual(project.series.books[0].locked_brief, "Visual identity 1")
 
+    def test_locked_visual_brief_can_be_completed_before_generation(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series", [(f"Book {i}", f"Subtitle {i}") for i in range(1, 6)]
+        )
+        book = project.series.books[0]
+        engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+
+        engine.set_locked_brief(book, "  European village line-art identity  ")
+
+        self.assertEqual(book.locked_brief, "European village line-art identity")
+        engine.start_generation(book)
+        self.assertEqual(book.state, BookState.GENERATING)
+
+    def test_locked_visual_brief_cannot_change_after_generation_starts(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series",
+            [
+                (f"Book {i}", f"Subtitle {i}", f"Visual identity {i}")
+                for i in range(1, 6)
+            ],
+        )
+        book = project.series.books[0]
+        engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+        engine.start_generation(book)
+
+        with self.assertRaisesRegex(ValueError, "cannot change"):
+            engine.set_locked_brief(book, "Different identity")
+
+        self.assertEqual(book.locked_brief, "Visual identity 1")
+
+    def test_locked_visual_brief_rejects_empty_update(self):
+        engine = ProductionEngine()
+        project = engine.create_series(
+            "Series", [(f"Book {i}", f"Subtitle {i}") for i in range(1, 6)]
+        )
+        with self.assertRaisesRegex(ValueError, "cannot be empty"):
+            engine.set_locked_brief(project.series.books[0], "   ")
+
     def test_manifest_rejects_duplicates(self):
         engine = ProductionEngine()
         project = engine.create_series("Series", [(f"B{i}", "S") for i in range(5)])
