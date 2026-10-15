@@ -45,6 +45,14 @@ class ProductionEngine:
         book.scenes = [Scene(i, title.strip()) for i, title in enumerate(scenes, 1)]
         book.advance(BookState.BOOK_PLANNED)
 
+    def set_locked_brief(self, book: Book, locked_brief: str) -> None:
+        if book.state not in {BookState.SERIES_PLANNED, BookState.BOOK_PLANNED}:
+            raise ValueError("Locked visual brief cannot change after generation starts")
+        locked_brief = locked_brief.strip()
+        if not locked_brief:
+            raise ValueError("Locked visual brief cannot be empty")
+        book.locked_brief = locked_brief
+
     def start_generation(self, book: Book) -> None:
         if len(book.scenes) != 40:
             raise ValueError("Generation requires a complete 40-scene manifest")
