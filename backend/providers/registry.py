@@ -17,7 +17,7 @@ class ProviderStatus:
     detail: str
 
 
-def _generic_provider(role: str, name: str, secret: str) -> ProviderStatus:
+def _generic_provider(role: str, name: str) -> ProviderStatus:
     if name == "mock":
         return ProviderStatus(role,name,ProviderState.MOCK,"Development adapter; not production cloud")
     configured=name=="openai" and bool(os.getenv("OPENAI_API_KEY","").strip())
@@ -52,11 +52,11 @@ def _storage_status(name: str) -> ProviderStatus:
 
 
 def provider_status() -> tuple[ProviderStatus,...]:
-    image=os.getenv("COZY_IMAGE_PROVIDER","mock").strip() or "mock"
-    vision=os.getenv("COZY_VISION_PROVIDER","mock").strip() or "mock"
-    storage=os.getenv("COZY_ARTIFACT_STORE","local").strip() or "local"
+    image=(os.getenv("COZY_IMAGE_PROVIDER","mock").strip() or "mock").lower()
+    vision=(os.getenv("COZY_VISION_PROVIDER","mock").strip() or "mock").lower()
+    storage=(os.getenv("COZY_ARTIFACT_STORE","local").strip() or "local").lower()
     return (
-        _generic_provider("image",image,"COZY_IMAGE_API_KEY"),
-        _generic_provider("vision",vision,"COZY_VISION_API_KEY"),
+        _generic_provider("image",image),
+        _generic_provider("vision",vision),
         _storage_status(storage),
     )
