@@ -1,7 +1,7 @@
 import importlib
 import os,unittest
 from unittest.mock import patch
-from backend.api.app import book_payload, series_concepts
+from backend.api.app import book_payload, series_concepts, start_book_generation
 from backend.api.status import system_status
 
 
@@ -55,6 +55,46 @@ class APIStatusTests(unittest.TestCase):
         self.assertEqual(
             payload["locked_brief"], "European village line-art identity"
         )
+
+    def test_generation_start_rolls_back_state_when_enqueue_fails(self):
+        from backend.api import app
+        from backend.domain.states import BookState
+        from backend.orchestrator.engine import ProductionEngine
+        from backend.runtime import Runtime
+
+        local_runtime = Runtime()
+        local_engine = ProductionEngine()
+        project = local_runtime.add(
+            local_engine.create_series(
+                "Series",
+                [
+                    (f"Book {i}", "", f"Visual identity {i}")
+                    for i in range(1, 6)
+                ],
+            )
+        )
+        book = project.series.books[0]
+        local_engine.install_manifest(book, [f"Scene {i}" for i in range(1, 41)])
+
+        class FailingProduction:
+            def enqueue_next_scene(self, project_id, target_book):
+                raise RuntimeError("queue_unavailable")
+
+        class FailingRuntime:
+            production = FailingProduction()
+
+            def persist(self, target_project):
+                raise AssertionError("failed start must not persist")
+
+        original_engine, original_runtime = app.engine, app.runtime
+        app.engine, app.runtime = local_engine, FailingRuntime()
+        try:
+            with self.assertRaisesRegex(RuntimeError, "queue_unavailable"):
+                start_book_generation(project, book)
+        finally:
+            app.engine, app.runtime = original_engine, original_runtime
+
+        self.assertEqual(book.state, BookState.BOOK_PLANNED)
 
     def test_api_module_imports(self):
         module=importlib.import_module("backend.api.app")
