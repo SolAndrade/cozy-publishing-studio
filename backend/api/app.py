@@ -35,6 +35,18 @@ def series_concepts(payload):
     ]
 
 
+def start_book_generation(project, book):
+    previous_state = book.state
+    try:
+        engine.start_generation(book)
+        job = runtime.production.enqueue_next_scene(project.id, book)
+    except Exception:
+        book.state = previous_state
+        raise
+    runtime.persist(project)
+    return job
+
+
 def book_payload(book):
     return {
         "position":book.position,"title":book.title,"subtitle":book.subtitle,
@@ -99,14 +111,7 @@ class Handler(BaseHTTPRequestHandler):
                     runtime.persist(project)
                     return response(self,200,book_payload(book))
                 if action=="start":
-                    previous_state = book.state
-                    try:
-                        engine.start_generation(book)
-                        job=runtime.production.enqueue_next_scene(project.id,book)
-                    except Exception:
-                        book.state = previous_state
-                        raise
-                    runtime.persist(project)
+                    job=start_book_generation(project,book)
                     return response(self,202,{"book":book_payload(book),"job_id":job.id if job else None})
             except (KeyError,ValueError,StopIteration) as exc:
                 return response(self,422,{"error":str(exc)})
