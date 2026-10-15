@@ -59,4 +59,39 @@ class ContractTests(unittest.TestCase):
         self.assertEqual(storage.state,ProviderState.BLOCKED)
 
 
+    def test_registry_normalizes_mixed_case_openai_names(self):
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(
+            os.environ,
+            {
+                "COZY_IMAGE_PROVIDER": "OpenAI",
+                "COZY_VISION_PROVIDER": "OPENAI",
+                "OPENAI_API_KEY": "configured-for-test",
+            },
+            clear=True,
+        ):
+            statuses = provider_status()
+
+        self.assertEqual(statuses[0].provider, "openai")
+        self.assertEqual(statuses[0].state, ProviderState.CONFIGURED)
+        self.assertEqual(statuses[1].provider, "openai")
+        self.assertEqual(statuses[1].state, ProviderState.CONFIGURED)
+
+    def test_registry_blocks_openai_without_server_secret(self):
+        import os
+        from unittest.mock import patch
+
+        with patch.dict(
+            os.environ,
+            {"COZY_IMAGE_PROVIDER": "openai", "COZY_VISION_PROVIDER": "openai"},
+            clear=True,
+        ):
+            statuses = provider_status()
+
+        self.assertEqual(statuses[0].state, ProviderState.BLOCKED)
+        self.assertEqual(statuses[1].state, ProviderState.BLOCKED)
+
+
 if __name__=="__main__": unittest.main()
