@@ -116,7 +116,10 @@ class Handler(BaseHTTPRequestHandler):
                     update_locked_brief(project,book,data["locked_brief"])
                     return response(self,200,book_payload(book))
                 if action=="start":
-                    job=start_book_generation(project,book)
+                    try:
+                        job=start_book_generation(project,book)
+                    except RuntimeError:
+                        return response(self,503,{"error":"generation_start_unavailable"})
                     return response(self,202,{"book":book_payload(book),"job_id":job.id if job else None})
             except (KeyError,ValueError,StopIteration) as exc:
                 return response(self,422,{"error":str(exc)})
