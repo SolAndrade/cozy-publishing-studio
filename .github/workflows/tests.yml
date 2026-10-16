@@ -32,3 +32,9 @@ jobs:
       - name: Install test dependencies
         run: python -m pip install -e . Pillow ReportLab PyMuPDF
       - run: python -m unittest discover -s tests -v
+      - name: Check frontend JavaScript syntax
+        run: |
+          node --check src/app.js
+          node --check src/api.js
+          node --check src/production.js
+          node --check src/status.js
