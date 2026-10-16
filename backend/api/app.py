@@ -35,6 +35,12 @@ def series_concepts(payload):
     ]
 
 
+def update_locked_brief(project, book, locked_brief):
+    engine.set_locked_brief(book, locked_brief)
+    runtime.persist(project)
+    return book
+
+
 def start_book_generation(project, book):
     previous_state = book.state
     try:
@@ -107,8 +113,7 @@ class Handler(BaseHTTPRequestHandler):
                     runtime.persist(project)
                     return response(self,200,book_payload(book))
                 if action=="brief":
-                    engine.set_locked_brief(book,data["locked_brief"])
-                    runtime.persist(project)
+                    update_locked_brief(project,book,data["locked_brief"])
                     return response(self,200,book_payload(book))
                 if action=="start":
                     job=start_book_generation(project,book)
