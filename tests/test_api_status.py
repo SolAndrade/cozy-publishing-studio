@@ -1,7 +1,7 @@
 import importlib
 import os,unittest
 from unittest.mock import patch
-from backend.api.app import book_payload, series_concepts, start_book_generation
+from backend.api.app import book_payload, series_concepts, start_book_generation, update_locked_brief
 from backend.api.status import system_status
 
 
@@ -54,6 +54,56 @@ class APIStatusTests(unittest.TestCase):
         self.assertEqual(
             payload["locked_brief"], "European village line-art identity"
         )
+
+    def test_api_brief_update_persists_valid_planned_identity(self):
+        from backend.api import app
+        from backend.orchestrator.engine import ProductionEngine
+
+        local_engine = ProductionEngine()
+        project = local_engine.create_series(
+            "Series", [(f"Book {i}", "") for i in range(1, 6)]
+        )
+        book = project.series.books[0]
+        persisted = []
+
+        class RecordingRuntime:
+            def persist(self, target_project):
+                persisted.append(target_project.id)
+
+        original_engine, original_runtime = app.engine, app.runtime
+        app.engine, app.runtime = local_engine, RecordingRuntime()
+        try:
+            updated = update_locked_brief(project, book, "  Locked village identity  ")
+        finally:
+            app.engine, app.runtime = original_engine, original_runtime
+
+        self.assertIs(updated, book)
+        self.assertEqual(book.locked_brief, "Locked village identity")
+        self.assertEqual(persisted, [project.id])
+
+    def test_api_brief_update_does_not_persist_invalid_empty_identity(self):
+        from backend.api import app
+        from backend.orchestrator.engine import ProductionEngine
+
+        local_engine = ProductionEngine()
+        project = local_engine.create_series(
+            "Series", [(f"Book {i}", "") for i in range(1, 6)]
+        )
+        book = project.series.books[0]
+
+        class RejectPersistRuntime:
+            def persist(self, target_project):
+                raise AssertionError("invalid brief must not persist")
+
+        original_engine, original_runtime = app.engine, app.runtime
+        app.engine, app.runtime = local_engine, RejectPersistRuntime()
+        try:
+            with self.assertRaisesRegex(ValueError, "cannot be empty"):
+                update_locked_brief(project, book, "   ")
+        finally:
+            app.engine, app.runtime = original_engine, original_runtime
+
+        self.assertEqual(book.locked_brief, "")
 
     def test_generation_start_rolls_back_state_when_enqueue_fails(self):
         from backend.api import app
